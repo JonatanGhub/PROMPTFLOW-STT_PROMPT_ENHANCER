@@ -1,0 +1,33 @@
+[package]
+name = "promptflow-stt"
+version = "0.0.1"
+edition = "2021"
+
+[lib]
+name = "promptflow_stt_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-updater = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+thiserror = "1"
+rusqlite = { version = "0.31", features = ["bundled"] }
+keyring = "2"
+cpal = "0.15"
+reqwest = { version = "0.12", features = ["json", "stream"] }
+async-trait = "0.1"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
