@@ -4,7 +4,7 @@
 
 PromptFlow STT is a cross-platform desktop overlay application (Windows, macOS, Linux) that intercepts text from the system clipboard or a microphone dictation session, enhances it through a configurable AI provider, and returns the result to the clipboard in under 300 milliseconds of application processing time (excluding external API latency). The application targets knowledge workers who write prompts, emails, code comments, and structured documents and want AI-assisted enhancement without switching away from their current application.
 
-Tauri v2 is the foundational framework that makes this architecture possible. It bundles a Chromium WebView (the React/TypeScript UI) alongside a native Rust process connected by a bidirectional IPC bridge. The WebView handles all rendering and user interaction while the Rust process holds OS-level privileges: it captures audio via platform microphone APIs, reads and writes the system clipboard atomically, registers global hotkeys that fire even when the application window is not focused, and stores API keys in the OS keychain. This split keeps the binary small (approximately 15 MB on disk, under 60 MB RAM at runtime) and avoids the overhead of an Electron or Node.js host process. The Rust backend communicates with the frontend through two IPC mechanisms: synchronous `invoke()` calls for request/response interactions (clipboard reads, enhancement requests, settings), and asynchronous Tauri events for streaming interactions (STT transcript chunks emitted in real time). All external API calls — to AI providers and STT engines — originate from the Rust process, keeping API keys out of the WebView context entirely.
+Tauri v2 is the foundational framework that makes this architecture possible. It bundles a Chromium WebView (the React/TypeScript UI) alongside a native Rust process connected by a bidirectional IPC bridge. The WebView handles all rendering and user interaction while the Rust process holds OS-level privileges: it captures audio via platform microphone APIs, reads and writes the system clipboard atomically, registers global hotkeys that fire even when the application window is not focused, and stores API keys in the OS keychain. This split keeps the binary small (approximately 15 MB on disk, under 60 MB RAM at runtime) and avoids the overhead of an Electron or Node.js host process. The Rust backend communicates with the frontend through two IPC mechanisms: request/response `invoke()` calls (Promise-based on the frontend, async on the Rust side) for interactions such as clipboard reads, enhancement requests, and settings; and asynchronous Tauri events for streaming interactions (STT transcript chunks emitted in real time). All external API calls — to AI providers and STT engines — originate from the Rust process, keeping API keys out of the WebView context entirely.
 
 ## 2. Layer Diagram
 
@@ -72,11 +72,11 @@ Tauri v2 is the foundational framework that makes this architecture possible. It
 
 - `useSTT(engine)` — manages the full recording lifecycle. On start it calls `invoke('start_recording', {engine})`, then subscribes to `stt://chunk` events to update `sessionStore.inputText` incrementally, and subscribes to `stt://done` to finalize the transcript and stop the recording indicator. Exposes `{ isRecording, start, stop }`.
 
-- `useHotkeys()` — on mount reads `settingsStore.hotkeys` and calls `register_hotkey` for each configured binding. On unmount calls `unregister_hotkey`. Re-registers automatically when the hotkey settings change.
+- `useHotkeys(onEnhance: () => void, onDictate: () => void)` — on mount: (1) calls `register_hotkey` for each configured binding, (2) subscribes to `hotkey://enhance` and `hotkey://dictate` Tauri events via `listen()`. On unmount: unregisters hotkeys and removes event listeners. Note: `tauri-plugin-global-shortcut` fires to the Rust callback, which then emits these frontend events. The hook does NOT receive OS hotkey events directly.
 
 ### 3.3 `stores/` (Zustand)
 
-- `settingsStore` — persisted to `localStorage` (non-sensitive values only). Shape: `{ provider: AIProvider, apiKeys: Record<AIProvider, string> (masked), selectedMode: EnhancementMode, hotkeys: Record<string, string>, privacyMode: boolean, sttEngine: STTEngine }`. API keys stored here are placeholders indicating whether a key exists; actual secrets live in the OS keychain via Rust.
+- `settingsStore` — persists to `localStorage` (non-sensitive values only). Shape: `{ provider: AIProvider, hasApiKey: Record<AIProvider, boolean>, selectedMode: EnhancementMode, hotkey_enhance: string, hotkey_dictate: string, privacyMode: boolean, sttEngine: STTEngine }`. API keys are never stored in the frontend. The store only tracks whether a key has been saved to the OS keychain. The `APIKeysForm` shows a masked indicator (e.g. '●●●●●●') if `hasApiKey[provider]` is true.
 
 - `sessionStore` — ephemeral (cleared on window hide). Shape: `{ inputText: string, outputText: string, activeMode: EnhancementMode, isRecording: boolean }`.
 
@@ -115,6 +115,7 @@ type AIProvider =
 interface EnhanceRequest { text: string; mode: EnhancementMode; provider: AIProvider }
 interface EnhanceResponse { result: string; tokens_used: number; cost_usd: number }
 interface AppError { code: string; message: string }
+interface STTStatus { available: boolean; reason?: string }
 ```
 
 ## 4. Backend Modules (`src-tauri/src/`)
@@ -132,11 +133,12 @@ All public Tauri commands are annotated `#[tauri::command]` and registered in `l
 - `unregister_hotkey(id: String) -> Result<(), AppError>` — removes a previously registered global shortcut.
 - `read_clipboard() -> Result<String, AppError>` — reads the current clipboard text.
 - `write_clipboard(text: String) -> Result<(), AppError>` — writes text to the clipboard.
+- `check_stt_status(engine: String) -> Result<STTStatus, AppError>` — checks if engine is reachable and API key is valid.
 
 ### 4.2 `error/mod.rs`
 
 ```rust
-#[derive(Debug, thiserror::Error, serde::Serialize)]
+#[derive(Debug, thiserror::Error)]
 pub enum AppError {
     #[error("Provider error: {0}")] Provider(String),
     #[error("STT error: {0}")] Stt(String),
@@ -145,9 +147,28 @@ pub enum AppError {
     #[error("Clipboard error: {0}")] Clipboard(String),
     #[error("Hotkey error: {0}")] Hotkey(String),
 }
+
+// Custom Serialize to produce { "code": "...", "message": "..." }
+// required for Tauri IPC — derived Serialize produces {"Provider":"..."} instead
+impl serde::Serialize for AppError {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeMap;
+        let mut map = s.serialize_map(Some(2))?;
+        map.serialize_entry("code", match self {
+            AppError::Provider(_) => "Provider",
+            AppError::Stt(_) => "Stt",
+            AppError::Storage(_) => "Storage",
+            AppError::Permission(_) => "Permission",
+            AppError::Clipboard(_) => "Clipboard",
+            AppError::Hotkey(_) => "Hotkey",
+        })?;
+        map.serialize_entry("message", &self.to_string())?;
+        map.end()
+    }
+}
 ```
 
-`AppError` implements `serde::Serialize` so that Tauri's IPC layer can serialize it as `{ code, message }` automatically. Frontend code deserializes this into the `AppError` TypeScript interface.
+`AppError` uses a custom `serde::Serialize` implementation (not derived) so that Tauri's IPC layer serializes it as `{ "code": "...", "message": "..." }`. Derived `Serialize` on an enum would produce `{"Provider":"..."}` instead, which does not match the `AppError` TypeScript interface. Frontend code deserializes the serialized form into the `AppError` TypeScript interface.
 
 ### 4.3 `stt/mod.rs` — STTEngine trait
 
@@ -183,7 +204,14 @@ Implementations: `openai.rs`, `anthropic.rs`, `gemini.rs`, `ollama.rs` (local, n
 
 ### 4.5 `enhancement/mod.rs`
 
-Holds the `EnhancementMode` enum and a dispatch function `build_prompt(mode: EnhancementMode, text: &str) -> (system: String, user: String)`. Each mode corresponds to a pure function in its own file (e.g., `fix_grammar.rs`, `formalize.rs`) that constructs a system prompt and user message from the input text. This separation keeps prompts easy to audit, update, and test without touching the dispatch logic.
+Holds the `EnhancementMode` enum and a dispatch function:
+
+```rust
+/// Returns (system_prompt, user_message) tuple
+pub fn build_prompt(mode: &EnhancementMode, text: &str) -> (String, String)
+```
+
+Each mode corresponds to a pure function in its own file (e.g., `fix_grammar.rs`, `formalize.rs`) that constructs a system prompt and user message from the input text. This separation keeps prompts easy to audit, update, and test without touching the dispatch logic.
 
 ### 4.6 `storage/`
 
@@ -227,6 +255,7 @@ Holds the `EnhancementMode` enum and a dispatch function `build_prompt(mode: Enh
 | unregister_hotkey | `invoke('unregister_hotkey', {id})` | `commands::hotkeys::unregister_hotkey` | `()` |
 | read_clipboard | `invoke('read_clipboard')` | `commands::clipboard::read_clipboard` | `String` |
 | write_clipboard | `invoke('write_clipboard', {text})` | `commands::clipboard::write_clipboard` | `()` |
+| check_stt_status | `invoke('check_stt_status', {engine})` | `commands::stt::check_stt_status` | `STTStatus` |
 
 All commands are typed via `lib/tauri.ts`. No component calls `invoke()` with a raw string.
 
@@ -236,6 +265,8 @@ All commands are typed via `lib/tauri.ts`. No component calls `invoke()` with a 
 |---|---|---|
 | `stt://chunk` | Rust → Frontend | `{ text: string }` — partial transcript emitted as audio is processed |
 | `stt://done` | Rust → Frontend | `{ text: string }` — final consolidated transcript; signals recording completion |
+| `hotkey://enhance` | Rust → Frontend | `{}` — fired when enhance hotkey pressed |
+| `hotkey://dictate` | Rust → Frontend | `{}` — fired when dictate hotkey pressed |
 
 ## 6. `tauri.conf.json` Decisions
 
@@ -243,12 +274,19 @@ All commands are typed via `lib/tauri.ts`. No component calls `invoke()` with a 
 - `productName`: `PromptFlow STT`
 - Window: `decorations: false` (no native title bar — the overlay renders its own chrome), `alwaysOnTop: true` (stays above the user's active application), `transparent: true` (allows rounded-corner blur effect), `resizable: false`, `width: 480`, `height: 320`
 - Enabled plugins: `global-shortcut` (system-wide hotkey registration), `clipboard-manager` (atomic clipboard read/write), `updater` (background auto-update with user-visible changelog)
-- Permissions granted in `capabilities/`: `clipboard-all`, `global-shortcut-all`, `shell:open` (required to launch the `whisper.cpp` binary for local STT)
+- Permissions granted in `capabilities/default.json`:
+  - `clipboard-manager:allow-read-text`
+  - `clipboard-manager:allow-write-text`
+  - `global-shortcut:allow-register`
+  - `global-shortcut:allow-unregister`
+  - `global-shortcut:allow-is-registered`
+  - `core:default`
+  - Note: `shell:open` is NOT included — whisper.cpp binary execution will be handled via a dedicated Tauri shell plugin permission when that feature is implemented in v0.5.
 
 ## 7. Data Flow — Enhancement (happy path)
 
-1. User presses the configured enhancement hotkey while working in any application. The OS delivers the event to PromptFlow STT via `tauri-plugin-global-shortcut`, even though the app window may be hidden or unfocused.
-2. The `useHotkeys` hook receives the event and calls `read_clipboard` via `lib/tauri.ts`. The current clipboard text becomes the input.
+1. User presses hotkey → Rust global-shortcut callback fires → Rust emits `hotkey://enhance` event → frontend `useHotkeys` listener calls `read_clipboard`.
+2. `read_clipboard` is called via `lib/tauri.ts`. The current clipboard text becomes the input.
 3. `useEnhanceMutation` calls `invoke('enhance_text', { text, mode, provider })` where `mode` is the current `settingsStore.selectedMode` and `provider` is `settingsStore.provider`.
 4. Rust: `commands::enhance::enhance_text` calls `enhancement::build_prompt(mode)` to produce a `(system, user)` prompt pair, then dispatches to the matching `providers::<provider>::complete(system, user)`.
 5. Rust: the provider returns a `ProviderResponse`. The command calls `storage::db::log_usage()` as a background task (non-blocking), then serializes and returns `EnhanceResponse` to the frontend.
