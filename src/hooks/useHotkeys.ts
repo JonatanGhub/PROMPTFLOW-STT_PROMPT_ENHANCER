@@ -6,6 +6,11 @@ import { useSettingsStore } from '@/stores/settingsStore'
 /**
  * Registers global hotkeys on mount and subscribes to backend-emitted events.
  *
+ * ⚠️ CALLER MUST stabilize `onEnhance` and `onDictate` with `useCallback` to avoid
+ * re-registering hotkeys on every render. Unstable function references will cause
+ * the useEffect to re-run on each render, unregistering and re-registering the OS
+ * hotkeys repeatedly.
+ *
  * Flow:
  * 1. Calls register_hotkey for each binding (tauri-plugin-global-shortcut)
  * 2. Listens for `hotkey://enhance` and `hotkey://dictate` events emitted by Rust
