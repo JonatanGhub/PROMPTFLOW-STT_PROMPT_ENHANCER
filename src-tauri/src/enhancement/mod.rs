@@ -1,4 +1,5 @@
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum EnhancementMode {
     FixGrammar,
     Formalize,
@@ -44,4 +45,11 @@ pub fn build_prompt(mode: &EnhancementMode, text: &str) -> (String, String) {
         }
     };
     (system.to_string(), text.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Tests for EnhancementMode — implement in unit test phase
 }

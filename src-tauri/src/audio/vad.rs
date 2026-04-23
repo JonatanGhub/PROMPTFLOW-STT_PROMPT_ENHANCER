@@ -27,3 +27,10 @@ impl Default for VoiceActivityDetector {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Tests for VoiceActivityDetector — implement in unit test phase
+}

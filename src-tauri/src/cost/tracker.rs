@@ -13,3 +13,10 @@ pub fn estimate_cost(tokens: u32, provider: &str) -> f64 {
     };
     (tokens as f64 / 1000.0) * rate_per_1k
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Tests for cost tracker — implement in unit test phase
+}

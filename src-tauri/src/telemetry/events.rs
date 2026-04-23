@@ -4,6 +4,6 @@ pub fn track(event: &str, enabled: bool) {
     if !enabled {
         return;
     }
-    // TODO: implement PostHog integration in v0.5 sprint
+    // PostHog integration scheduled for v0.5 sprint — see docs/specs/07_ROADMAP.md
     let _ = event;
 }

@@ -1,6 +1,9 @@
 use crate::error::AppError;
 use serde::{Deserialize, Serialize};
 
+// Note for v0.1 sprint: provider, stt_engine, selected_mode are String here for IPC simplicity.
+// Before v0.1 ships, validate these against the known AIProvider/STTEngine/EnhancementMode values.
+// See src/types/index.ts for the TypeScript contract.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Settings {
     pub provider: String,
