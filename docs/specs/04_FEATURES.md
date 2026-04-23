@@ -255,6 +255,8 @@ Reads the system clipboard contents and pre-populates the TextInput field when t
 - Inputs up to 50,000 characters are accepted in full.
 - Inputs exceeding 50,000 characters are truncated at the character boundary before 50,000 and a warning banner ("Text truncated at 50,000 characters") is shown in the overlay.
 - No integration with the source application is required — clipboard capture works in any app on Windows, macOS, and Linux.
+- On successful enhancement, the result text is automatically written to the system clipboard without requiring user action, so it is ready to paste immediately.
+- On enhancement failure, the clipboard is not modified — the original clipboard content is preserved.
 
 **Milestone:** v0.1
 
@@ -268,7 +270,7 @@ Records audio from the system microphone, transcribes it, and populates the Text
 - Audio recording begins within 500 ms of the dictate hotkey press being received by the Rust process.
 - For streaming-capable engines (Deepgram, AssemblyAI), partial transcripts appear in the TextInput field within 200 ms of each `stt://chunk` event being received by the frontend.
 - Final transcript auto-populates the TextInput field on silence detection; silence threshold is 1.5 seconds of audio below −40 dBFS.
-- In Privacy Mode (see §2.3), only `whisper_cpp` and Ollama are selectable — no network requests are made during transcription.
+- In Privacy Mode (see §2.3), only `whisper_cpp` and `web_speech` are selectable as STT engines — no network STT requests are made during transcription.
 
 **Milestone:** v0.2
 

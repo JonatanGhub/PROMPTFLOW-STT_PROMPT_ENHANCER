@@ -21,6 +21,8 @@ pub struct ProviderResponse {
 
 API keys are stored in the OS keychain via `storage/keychain.rs` using the key format `promptflow-stt/<provider_id>`. Keys are never passed through the frontend and never written to disk in plaintext.
 
+> **Bootstrap phase note:** Only `src-tauri/src/providers/mod.rs` (the trait definition) exists in the current scaffold. Individual provider files (`src-tauri/src/providers/<name>.rs`) are created during the v0.1 sprint when provider implementations are built. The Rust struct names listed in each section below refer to the future implementation files.
+
 ---
 
 ### openai

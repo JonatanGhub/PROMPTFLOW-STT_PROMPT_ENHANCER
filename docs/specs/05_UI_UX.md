@@ -140,7 +140,7 @@ Displayed when the app launches and no AI provider key is present in the OS keyc
 ```
 App launch (first time — no API key in keychain)
   │
-  └─► OnboardingWizard appears (full overlay, 480×400px, centered)
+  └─► OnboardingWizard appears (480×320px window, content scrollable within fixed height)
         Step indicator: ●  ○  ○   (1 of 3)
         │
         ├─► Step 1: Choose AI provider
