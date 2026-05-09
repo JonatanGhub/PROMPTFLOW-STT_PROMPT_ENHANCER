@@ -81,13 +81,12 @@ mod tests {
         );
     }
 
-    /// Verify that `has_api_key` returns `Ok(false)` for a missing provider.
+    /// Verify that `has_api_key` does not return an error for a missing provider.
+    /// (Cannot assert the exact `false` value without controlling the OS keychain state.)
     #[test]
-    fn test_has_api_key_missing_returns_false() {
+    fn test_has_api_key_missing_does_not_error() {
         let store = KeychainStore::new();
         let result = store.has_api_key("__promptflow_test_nonexistent_provider__");
-        // May be Ok(false) or Ok(true) depending on whether a stray entry
-        // exists, but it must not be an Err.
         assert!(result.is_ok(), "has_api_key must not error on missing entry");
     }
 

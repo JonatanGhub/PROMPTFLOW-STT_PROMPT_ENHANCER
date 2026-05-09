@@ -40,15 +40,16 @@ fn settings_path(app: &AppHandle) -> Result<PathBuf, AppError> {
 
 /// Returns the current settings.
 /// Falls back to [`Settings::default`] when no settings file exists yet.
+// TODO(v0.1): add Settings::validate() to reject unknown provider/stt_engine/selected_mode
+// strings at deserialization time so errors surface here, not deep in the enhancement layer.
 #[tauri::command]
 pub async fn get_settings(app: AppHandle) -> Result<Settings, AppError> {
     let path = settings_path(&app)?;
-    if !path.exists() {
-        return Ok(Settings::default());
+    match std::fs::read_to_string(&path) {
+        Ok(data) => serde_json::from_str(&data).map_err(|e| AppError::Storage(e.to_string())),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Settings::default()),
+        Err(e) => Err(AppError::Storage(e.to_string())),
     }
-    let data = std::fs::read_to_string(&path)
-        .map_err(|e| AppError::Storage(e.to_string()))?;
-    serde_json::from_str(&data).map_err(|e| AppError::Storage(e.to_string()))
 }
 
 /// Persists `settings` to disk as pretty-printed JSON.
