@@ -1,17 +1,34 @@
+import { useCallback } from 'react'
+import type { AIProvider } from '@/types'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
 import { ApiKeyInput } from './ApiKeyInput'
 
+const V01_PROVIDERS = ['openai', 'groq'] as const satisfies readonly AIProvider[]
+
 export function SettingsWindow() {
-  const provider = useSettingsStore((s) => s.provider)
+  const rawProvider = useSettingsStore((s) => s.provider)
   const setProvider = useSettingsStore((s) => s.setProvider)
   const setSettingsVisible = useUIStore((s) => s.setSettingsVisible)
+
+  // Guard against stale persisted provider outside the v0.1 two-value set
+  const provider: (typeof V01_PROVIDERS)[number] = (V01_PROVIDERS as readonly string[]).includes(rawProvider)
+    ? rawProvider as (typeof V01_PROVIDERS)[number]
+    : 'openai'
+
+  const handleProviderChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setProvider(e.target.value as AIProvider)
+    },
+    [setProvider],
+  )
 
   return (
     <div
       className="w-[480px] min-h-[320px] bg-background border border-border rounded-[12px] shadow-[0_25px_50px_rgba(0,0,0,0.5)] flex flex-col"
       role="dialog"
       aria-label="PromptFlow settings"
+      aria-modal="true"
     >
       {/* Header */}
       <div className="h-8 w-full flex items-center justify-between px-3 shrink-0 border-b border-border">
@@ -32,14 +49,14 @@ export function SettingsWindow() {
         <section>
           <h2 className="text-sm font-medium text-foreground mb-2">AI Provider</h2>
           <div className="flex flex-col gap-1">
-            {(['openai', 'groq'] as const).map((p) => (
+            {V01_PROVIDERS.map((p) => (
               <label key={p} className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="radio"
                   name="provider"
                   value={p}
                   checked={provider === p}
-                  onChange={() => setProvider(p)}
+                  onChange={handleProviderChange}
                   className="accent-primary"
                 />
                 <span className="text-sm text-foreground">

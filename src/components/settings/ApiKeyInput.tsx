@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import type { AIProvider } from '@/types'
 import { useApiKey } from '@/hooks/useApiKey'
 
@@ -7,20 +7,25 @@ interface ApiKeyInputProps {
 }
 
 export function ApiKeyInput({ provider }: ApiKeyInputProps) {
-  const { hasKey, isSaving, saveKey, deleteKey, error } = useApiKey(provider)
+  const { hasKey, isSaving, isDeleting, saveKey, deleteKey, error } = useApiKey(provider)
   const [inputValue, setInputValue] = useState('')
   const [isChanging, setIsChanging] = useState(false)
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!inputValue.trim()) return
-    await saveKey(inputValue.trim())
-    setInputValue('')
-    setIsChanging(false)
-  }
+    try {
+      await saveKey(inputValue.trim())
+      // Only clear input on success — if saveKey throws, inputValue is preserved
+      setInputValue('')
+      setIsChanging(false)
+    } catch {
+      // Error is already set in the hook; input value retained so user can retry
+    }
+  }, [inputValue, saveKey])
 
-  const handleRemove = async () => {
+  const handleRemove = useCallback(async () => {
     await deleteKey()
-  }
+  }, [deleteKey])
 
   const showInput = !hasKey || isChanging
 
@@ -33,9 +38,7 @@ export function ApiKeyInput({ provider }: ApiKeyInputProps) {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                void handleSave()
-              }
+              if (e.key === 'Enter') void handleSave()
             }}
             placeholder="Enter API key…"
             className="flex-1 h-8 px-2 text-sm bg-input border border-border rounded-[var(--radius)] text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring"
@@ -51,7 +54,7 @@ export function ApiKeyInput({ provider }: ApiKeyInputProps) {
           {isChanging && (
             <button
               type="button"
-              onClick={() => setIsChanging(false)}
+              onClick={() => { setIsChanging(false); setInputValue('') }}
               className="h-8 px-3 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               Cancel
@@ -73,10 +76,10 @@ export function ApiKeyInput({ provider }: ApiKeyInputProps) {
           <button
             type="button"
             onClick={() => { void handleRemove() }}
-            disabled={isSaving}
+            disabled={isDeleting}
             className="h-8 px-3 text-sm text-destructive hover:text-destructive/80 border border-border rounded-[var(--radius)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {isSaving ? 'Removing…' : 'Remove'}
+            {isDeleting ? 'Removing…' : 'Remove'}
           </button>
         </div>
       )}
