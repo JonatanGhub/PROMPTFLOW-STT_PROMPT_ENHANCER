@@ -89,14 +89,14 @@ mod tests {
     fn test_enhance_text_mode_fix_grammar_parses() {
         let result = parse_mode("fix_grammar");
         assert!(result.is_ok(), "fix_grammar should parse successfully");
-        matches!(result.unwrap(), EnhancementMode::FixGrammar);
+        assert!(matches!(result.unwrap(), EnhancementMode::FixGrammar));
     }
 
     #[test]
     fn test_enhance_text_mode_formalize_parses() {
         let result = parse_mode("formalize");
         assert!(result.is_ok());
-        matches!(result.unwrap(), EnhancementMode::Formalize);
+        assert!(matches!(result.unwrap(), EnhancementMode::Formalize));
     }
 
     #[test]
