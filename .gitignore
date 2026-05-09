@@ -83,3 +83,6 @@ temp/
 
 # Claude Code project memory (local tooling only)
 .claude/
+
+# Git worktrees (local isolation only)
+.worktrees/
