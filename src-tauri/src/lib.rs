@@ -29,6 +29,9 @@ pub fn run() {
             commands::hotkeys::unregister_hotkey,
             commands::clipboard::read_clipboard,
             commands::clipboard::write_clipboard,
+            commands::api_key::save_api_key,
+            commands::api_key::has_api_key,
+            commands::api_key::delete_api_key,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

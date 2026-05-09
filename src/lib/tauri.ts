@@ -31,4 +31,13 @@ export const tauriApi = {
 
   writeClipboard: (text: string) =>
     invoke<void>('write_clipboard', { text }),
+
+  saveApiKey: (provider: string, key: string) =>
+    invoke<void>('save_api_key', { provider, key }),
+
+  hasApiKey: (provider: string) =>
+    invoke<boolean>('has_api_key', { provider }),
+
+  deleteApiKey: (provider: string) =>
+    invoke<void>('delete_api_key', { provider }),
 }

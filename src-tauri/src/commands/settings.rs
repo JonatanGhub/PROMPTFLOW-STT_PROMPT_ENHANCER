@@ -1,5 +1,7 @@
 use crate::error::AppError;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+use tauri::{AppHandle, Manager};
 
 // Note for v0.1 sprint: provider, stt_engine, selected_mode are String here for IPC simplicity.
 // Before v0.1 ships, validate these against the known AIProvider/STTEngine/EnhancementMode values.
@@ -27,13 +29,38 @@ impl Default for Settings {
     }
 }
 
-#[tauri::command]
-pub async fn get_settings() -> Result<Settings, AppError> {
-    todo!("get_settings — implement in v0.1 sprint")
+/// Returns the path to the settings JSON file inside the app data directory.
+fn settings_path(app: &AppHandle) -> Result<PathBuf, AppError> {
+    let dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| AppError::Storage(e.to_string()))?;
+    Ok(dir.join("settings.json"))
 }
 
+/// Returns the current settings.
+/// Falls back to [`Settings::default`] when no settings file exists yet.
 #[tauri::command]
-pub async fn set_settings(settings: Settings) -> Result<(), AppError> {
-    let _ = settings;
-    todo!("set_settings — implement in v0.1 sprint")
+pub async fn get_settings(app: AppHandle) -> Result<Settings, AppError> {
+    let path = settings_path(&app)?;
+    if !path.exists() {
+        return Ok(Settings::default());
+    }
+    let data = std::fs::read_to_string(&path)
+        .map_err(|e| AppError::Storage(e.to_string()))?;
+    serde_json::from_str(&data).map_err(|e| AppError::Storage(e.to_string()))
+}
+
+/// Persists `settings` to disk as pretty-printed JSON.
+/// Creates the parent directory if it does not exist.
+#[tauri::command]
+pub async fn set_settings(app: AppHandle, settings: Settings) -> Result<(), AppError> {
+    let path = settings_path(&app)?;
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| AppError::Storage(e.to_string()))?;
+    }
+    let data = serde_json::to_string_pretty(&settings)
+        .map_err(|e| AppError::Storage(e.to_string()))?;
+    std::fs::write(&path, data).map_err(|e| AppError::Storage(e.to_string()))
 }
