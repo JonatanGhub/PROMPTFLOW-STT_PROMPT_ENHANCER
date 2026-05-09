@@ -1,43 +1,38 @@
 import { useEffect } from 'react'
 import { listen } from '@tauri-apps/api/event'
-import { tauriApi } from '@/lib/tauri'
-import { useSettingsStore } from '@/stores/settingsStore'
+import { useUIStore } from '@/stores/uiStore'
+import { useSessionStore } from '@/stores/sessionStore'
 
 /**
- * Registers global hotkeys on mount and subscribes to backend-emitted events.
+ * Subscribes to backend `hotkey://enhance` events emitted when the OS hotkey fires.
  *
- * ⚠️ CALLER MUST stabilize `onEnhance` and `onDictate` with `useCallback` to avoid
- * re-registering hotkeys on every render. Unstable function references will cause
- * the useEffect to re-run on each render, unregistering and re-registering the OS
- * hotkeys repeatedly.
+ * The global hotkey (Ctrl+Shift+E / Cmd+Shift+E) is registered in Rust at startup
+ * (src-tauri/src/lib.rs `.setup()`). When it fires, Rust reads the clipboard and
+ * emits `hotkey://enhance` with the captured text as payload.
  *
- * Flow:
- * 1. Calls register_hotkey for each binding (tauri-plugin-global-shortcut)
- * 2. Listens for `hotkey://enhance` and `hotkey://dictate` events emitted by Rust
- *    when the OS hotkey fires (the plugin fires to Rust, Rust re-emits to frontend)
- * 3. Unregisters and removes listeners on unmount
+ * This hook:
+ *  1. Populates `inputText` with the clipboard payload
+ *  2. Clears previous `outputText` and `errorMessage`
+ *  3. Shows the overlay window via `overlayVisible`
+ *
+ * Cleanup: the Tauri listener is removed on unmount to prevent memory leaks.
  */
-export function useHotkeys(
-  onEnhance: () => void,
-  onDictate: () => void
-) {
-  const hotkeyEnhance = useSettingsStore((s) => s.hotkeyEnhance)
-  const hotkeyDictate = useSettingsStore((s) => s.hotkeyDictate)
+export function useHotkeys() {
+  const setOverlayVisible = useUIStore((s) => s.setOverlayVisible)
+  const clearError = useUIStore((s) => s.clearError)
+  const setInputText = useSessionStore((s) => s.setInputText)
+  const setOutputText = useSessionStore((s) => s.setOutputText)
 
   useEffect(() => {
-    // Register OS-level hotkeys
-    tauriApi.registerHotkey('enhance', hotkeyEnhance).catch(console.error)
-    tauriApi.registerHotkey('dictate', hotkeyDictate).catch(console.error)
-
-    // Listen for backend-emitted events when hotkeys fire
-    const unlistenEnhance = listen('hotkey://enhance', onEnhance)
-    const unlistenDictate = listen('hotkey://dictate', onDictate)
+    const unlistenPromise = listen<string>('hotkey://enhance', (event) => {
+      setInputText(event.payload)
+      setOutputText('')
+      clearError()
+      setOverlayVisible(true)
+    })
 
     return () => {
-      tauriApi.unregisterHotkey('enhance').catch(console.error)
-      tauriApi.unregisterHotkey('dictate').catch(console.error)
-      unlistenEnhance.then((fn) => fn())
-      unlistenDictate.then((fn) => fn())
+      unlistenPromise.then((unlisten) => unlisten()).catch(console.error)
     }
-  }, [hotkeyEnhance, hotkeyDictate, onEnhance, onDictate])
+  }, [setOverlayVisible, clearError, setInputText, setOutputText])
 }

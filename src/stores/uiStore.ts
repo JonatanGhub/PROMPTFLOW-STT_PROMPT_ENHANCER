@@ -9,6 +9,7 @@ interface UIState {
   setIsLoading: (v: boolean) => void
   setError: (msg: string | null) => void
   setSettingsVisible: (v: boolean) => void
+  clearError: () => void
 }
 
 export const useUIStore = create<UIState>()((set) => ({
@@ -20,4 +21,5 @@ export const useUIStore = create<UIState>()((set) => ({
   setIsLoading: (isLoading) => set({ isLoading }),
   setError: (errorMessage) => set({ errorMessage }),
   setSettingsVisible: (settingsVisible) => set({ settingsVisible }),
+  clearError: () => set({ errorMessage: null }),
 }))
