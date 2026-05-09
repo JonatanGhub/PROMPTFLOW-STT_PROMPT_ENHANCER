@@ -1,4 +1,5 @@
 import { useRef, useEffect, KeyboardEvent } from 'react'
+import { isMac } from '@/lib/platform'
 
 const CHAR_WARN_THRESHOLD = 45000
 const CHAR_MAX = 50000
@@ -20,7 +21,6 @@ export function TextInput({ value, onChange, onSubmit, disabled }: TextInputProp
   }, [])
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    const isMac = navigator.platform.includes('Mac')
     const modifierHeld = isMac ? e.metaKey : e.ctrlKey
     if (modifierHeld && e.key === 'Enter') {
       e.preventDefault()

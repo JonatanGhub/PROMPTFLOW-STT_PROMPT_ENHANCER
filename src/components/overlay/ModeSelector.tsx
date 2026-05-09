@@ -48,6 +48,7 @@ export function ModeSelector({ modes }: ModeSelectorProps) {
             key={mode}
             role="tab"
             aria-selected={isActive}
+            tabIndex={isActive ? 0 : -1}
             ref={(el) => { pillRefs.current[index] = el }}
             onClick={() => setActiveMode(mode)}
             onKeyDown={(e) => handleKeyDown(e, index)}

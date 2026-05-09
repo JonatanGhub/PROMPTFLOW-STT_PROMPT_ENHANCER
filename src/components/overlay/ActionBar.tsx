@@ -1,4 +1,5 @@
-const isMac = navigator.platform.includes('Mac')
+import { isMac } from '@/lib/platform'
+
 const SHORTCUT_LABEL = isMac ? '⌘↵' : 'Ctrl↵'
 
 interface ActionBarProps {
@@ -14,6 +15,7 @@ export function ActionBar({ onEnhance, onCopy, onClear, isLoading, hasOutput }: 
     <div className="flex flex-row items-center gap-2">
       {/* Enhance button */}
       <button
+        type="button"
         onClick={onEnhance}
         disabled={isLoading}
         aria-label="Enhance text"
@@ -39,6 +41,7 @@ export function ActionBar({ onEnhance, onCopy, onClear, isLoading, hasOutput }: 
 
       {/* Copy Result button */}
       <button
+        type="button"
         onClick={onCopy}
         disabled={!hasOutput}
         aria-label="Copy result"
@@ -49,6 +52,7 @@ export function ActionBar({ onEnhance, onCopy, onClear, isLoading, hasOutput }: 
 
       {/* Clear button */}
       <button
+        type="button"
         onClick={onClear}
         aria-label="Clear"
         className="text-muted-foreground hover:text-foreground px-4 py-2 text-sm transition-colors"

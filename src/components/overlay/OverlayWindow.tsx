@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { useUIStore } from '@/stores/uiStore'
 import { useSessionStore } from '@/stores/sessionStore'
 import { tauriApi } from '@/lib/tauri'
@@ -22,8 +22,6 @@ export function OverlayWindow({ onEnhance }: OverlayWindowProps) {
   const setInputText = useSessionStore((s) => s.setInputText)
   const reset = useSessionStore((s) => s.reset)
 
-  const inputRef = useRef<HTMLElement | null>(null)
-
   // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -34,12 +32,6 @@ export function OverlayWindow({ onEnhance }: OverlayWindowProps) {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [setOverlayVisible])
-
-  // Auto-focus TextInput on mount — the TextInput component handles this internally
-  // but we keep a ref attachment point here for future use
-  const handleInputMount = (el: HTMLElement | null) => {
-    inputRef.current = el
-  }
 
   const handleCopy = async () => {
     if (!outputText) return
@@ -88,7 +80,7 @@ export function OverlayWindow({ onEnhance }: OverlayWindowProps) {
       </div>
 
       {/* Content */}
-      <div className="flex flex-col gap-2 p-3 flex-1" ref={handleInputMount}>
+      <div className="flex flex-col gap-2 p-3 flex-1">
         <ModeSelector modes={V01_MODES} />
 
         <TextInput

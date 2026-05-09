@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { tauriApi } from '@/lib/tauri'
 
 const COPIED_RESET_MS = 1500
@@ -9,6 +9,20 @@ interface TextOutputProps {
 
 export function TextOutput({ value }: TextOutputProps) {
   const [copied, setCopied] = useState(false)
+  // Separate visible state to trigger CSS fade-in: starts false, set to true one tick after value arrives
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    if (value) {
+      // Start invisible, then transition to visible on next frame
+      setVisible(false)
+      const id = requestAnimationFrame(() => setVisible(true))
+      return () => cancelAnimationFrame(id)
+    } else {
+      setVisible(false)
+      return undefined
+    }
+  }, [value])
 
   const handleCopy = async () => {
     if (!value) return
@@ -18,23 +32,28 @@ export function TextOutput({ value }: TextOutputProps) {
   }
 
   return (
-    <div className="relative min-h-[56px] max-h-[120px] overflow-y-auto bg-input border border-border rounded-[var(--radius)] p-2">
-      <div
-        role="textbox"
-        aria-readonly="true"
-        aria-label="Enhancement result"
-        className={[
-          'text-base pr-8',
-          value
-            ? 'text-foreground transition-opacity duration-200 opacity-100'
-            : 'text-muted-foreground',
-        ].join(' ')}
-      >
-        {value || 'Enhancement result will appear here'}
+    <div className="relative min-h-[56px]">
+      {/* Scrollable content area */}
+      <div className="min-h-[56px] max-h-[120px] overflow-y-auto bg-input border border-border rounded-[var(--radius)] p-2 pr-8">
+        <div
+          role="textbox"
+          aria-readonly="true"
+          aria-label="Enhancement result"
+          className={[
+            'text-base transition-opacity duration-200',
+            value
+              ? visible ? 'text-foreground opacity-100' : 'text-foreground opacity-0'
+              : 'text-muted-foreground opacity-100',
+          ].join(' ')}
+        >
+          {value || 'Enhancement result will appear here'}
+        </div>
       </div>
 
+      {/* Copy button — outside scrollable area, positioned absolute to the wrapper */}
       {value && (
         <button
+          type="button"
           onClick={() => { void handleCopy() }}
           aria-label={copied ? 'Copied!' : 'Copy result'}
           title={copied ? 'Copied!' : 'Copy to clipboard'}
