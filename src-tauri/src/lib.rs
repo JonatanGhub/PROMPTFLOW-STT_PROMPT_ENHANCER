@@ -19,7 +19,7 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
-            use tauri::{Emitter, Manager};
+            use tauri::Emitter;
             use tauri_plugin_clipboard_manager::ClipboardExt;
             use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
