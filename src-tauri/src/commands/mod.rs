@@ -1,3 +1,4 @@
+pub mod api_key;
 pub mod clipboard;
 pub mod enhance;
 pub mod hotkeys;

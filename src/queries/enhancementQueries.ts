@@ -25,6 +25,8 @@ export function useEnhanceMutation() {
     },
     onSuccess: (data) => {
       setOutputText(data.result)
+      // Auto-write result to clipboard so the user can paste immediately
+      tauriApi.writeClipboard(data.result).catch(console.error)
     },
     onError: (err: Error) => {
       setError(err.message)
