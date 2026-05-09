@@ -1,6 +1,6 @@
 import { useRef, KeyboardEvent } from 'react'
 import type { EnhancementMode } from '@/types'
-import { useSessionStore } from '@/stores/sessionStore'
+import { useSettingsStore } from '@/stores/settingsStore'
 
 export const V01_MODES = ['fix_grammar', 'formalize', 'shorten'] as const satisfies readonly EnhancementMode[]
 
@@ -15,8 +15,9 @@ interface ModeSelectorProps {
 }
 
 export function ModeSelector({ modes }: ModeSelectorProps) {
-  const activeMode = useSessionStore((s) => s.activeMode)
-  const setActiveMode = useSessionStore((s) => s.setActiveMode)
+  // selectedMode is persisted across overlay invocations — lives in settingsStore
+  const activeMode = useSettingsStore((s) => s.selectedMode)
+  const setActiveMode = useSettingsStore((s) => s.setSelectedMode)
   const pillRefs = useRef<(HTMLButtonElement | null)[]>([])
 
   const handleKeyDown = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {

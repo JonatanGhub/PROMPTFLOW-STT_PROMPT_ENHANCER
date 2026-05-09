@@ -57,7 +57,7 @@ export function OverlayWindow({ onEnhance }: OverlayWindowProps) {
       >
         <span className="text-xs text-muted-foreground select-none">PromptFlow</span>
         <button
-          onClick={() => setSettingsVisible(true)}
+          onClick={() => { setOverlayVisible(false); setSettingsVisible(true) }}
           aria-label="Open settings"
           className="text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded"
         >
