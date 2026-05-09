@@ -18,9 +18,7 @@ pub async fn read_clipboard(app: tauri::AppHandle) -> Result<String, AppError> {
 #[tauri::command]
 pub async fn write_clipboard(app: tauri::AppHandle, text: String) -> Result<(), AppError> {
     app.clipboard()
-        .write_text(tauri_plugin_clipboard_manager::ClipboardContents::PlainText(
-            text,
-        ))
+        .write_text(text)
         .map_err(|e| AppError::Clipboard(e.to_string()))?;
 
     Ok(())
