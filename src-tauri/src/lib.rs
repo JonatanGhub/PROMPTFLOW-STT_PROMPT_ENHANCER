@@ -18,6 +18,27 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .setup(|app| {
+            use tauri::{Emitter, Manager};
+            use tauri_plugin_clipboard_manager::ClipboardExt;
+            use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
+
+            let shortcut = "CommandOrControl+Shift+E"
+                .parse::<tauri_plugin_global_shortcut::Shortcut>()
+                .expect("default hotkey is always valid");
+
+            app.handle().global_shortcut().on_shortcut(
+                shortcut,
+                |app, _shortcut, event| {
+                    if event.state == ShortcutState::Pressed {
+                        let text = app.clipboard().read_text().unwrap_or_default();
+                        let _ = app.emit("hotkey://enhance", text);
+                    }
+                },
+            )?;
+
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::enhance::enhance_text,
             commands::stt::start_recording,
