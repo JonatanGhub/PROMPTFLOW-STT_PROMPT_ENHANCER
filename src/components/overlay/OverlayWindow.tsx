@@ -48,14 +48,14 @@ export function OverlayWindow({ onEnhance }: OverlayWindowProps) {
       role="dialog"
       aria-label="PromptFlow overlay"
     >
-      {/* Drag region */}
+      {/* Drag region — click-and-drag this bar to move the window */}
       {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
       {/* @ts-ignore — data-tauri-drag-region is a Tauri-specific data attribute */}
       <div
         data-tauri-drag-region
-        className="h-8 w-full flex items-center justify-between px-3 shrink-0"
+        className="h-8 w-full flex items-center justify-between px-3 shrink-0 cursor-move"
       >
-        <span className="text-xs text-muted-foreground select-none">PromptFlow</span>
+        <span className="text-xs text-muted-foreground select-none" data-tauri-drag-region>⠿ PromptFlow</span>
         <button
           onClick={() => { setOverlayVisible(false); setSettingsVisible(true) }}
           aria-label="Open settings"

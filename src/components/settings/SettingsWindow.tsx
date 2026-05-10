@@ -10,6 +10,12 @@ export function SettingsWindow() {
   const rawProvider = useSettingsStore((s) => s.provider)
   const setProvider = useSettingsStore((s) => s.setProvider)
   const setSettingsVisible = useUIStore((s) => s.setSettingsVisible)
+  const setOverlayVisible = useUIStore((s) => s.setOverlayVisible)
+
+  const handleClose = useCallback(() => {
+    setSettingsVisible(false)
+    setOverlayVisible(true) // go back to overlay instead of hiding the window
+  }, [setSettingsVisible, setOverlayVisible])
 
   // Guard against stale persisted provider outside the v0.1 two-value set
   const provider: (typeof V01_PROVIDERS)[number] = (V01_PROVIDERS as readonly string[]).includes(rawProvider)
@@ -30,12 +36,14 @@ export function SettingsWindow() {
       aria-label="PromptFlow settings"
       aria-modal="true"
     >
-      {/* Header */}
-      <div className="h-8 w-full flex items-center justify-between px-3 shrink-0 border-b border-border">
-        <span className="text-sm font-semibold text-foreground">Settings</span>
+      {/* Header — drag region so the window is moveable */}
+      {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
+      {/* @ts-ignore */}
+      <div data-tauri-drag-region className="h-8 w-full flex items-center justify-between px-3 shrink-0 border-b border-border">
+        <span className="text-sm font-semibold text-foreground select-none" data-tauri-drag-region>Settings</span>
         <button
           type="button"
-          onClick={() => setSettingsVisible(false)}
+          onClick={handleClose}
           aria-label="Close settings"
           className="text-muted-foreground hover:text-foreground transition-colors"
         >

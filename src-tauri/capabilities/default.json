@@ -5,6 +5,9 @@
   "windows": ["overlay"],
   "permissions": [
     "core:default",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-set-focus",
     "clipboard-manager:allow-read-text",
     "clipboard-manager:allow-write-text",
     "global-shortcut:allow-register",
